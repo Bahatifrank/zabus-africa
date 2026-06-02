@@ -28,7 +28,7 @@ export default function AddToPlaylistModal({
 
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {playlists.length === 0 && (
-            <p className="text-zinc-400 text-sm">No playlists found</p>
+            <p className="text-zinc-400 text-sm">Create A playlist</p>
           )}
 
           {playlists.map((playlist) => (
