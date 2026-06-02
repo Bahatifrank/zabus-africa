@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { Play, Flame, Clock, barChart as Chart } from "lucide-react";
+import { Play, Flame, Clock, BarChart as Chart } from "lucide-react";
 import { usePlayerStore } from "@/app/store/usePlayerStore";
 
 export default function TrendingPage() {
