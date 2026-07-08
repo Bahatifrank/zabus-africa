@@ -34,51 +34,73 @@ export default function ArtistUpload() {
     setStatus("Uploading files...");
 
     const formData = new FormData(e.currentTarget);
+
     const mediaFile = formData.get("media") as File;
     const coverFile = formData.get("cover") as File;
     const title = formData.get("title") as string;
     const artist = formData.get("artist") as string;
 
     try {
-      // 1. Detect Media Type (Precise detection)
+      // Get the logged-in user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("You must be logged in to upload music.");
+      }
+
+      // Detect media type
       const isVideo = mediaFile.type.startsWith("video/");
       const detectedType = isVideo ? "video" : "audio";
 
-      // 2. Upload Media (Tracks)
+      // Upload media file
       const mediaExt = mediaFile.name.split(".").pop();
       const mediaName = `${Date.now()}-track.${mediaExt}`;
+
       const { data: mData, error: mErr } = await supabase.storage
         .from("media")
         .upload(`tracks/${mediaName}`, mediaFile);
+
       if (mErr) throw mErr;
 
-      // 3. Upload Cover
+      // Upload cover
       const coverExt = coverFile.name.split(".").pop();
       const coverName = `${Date.now()}-cover.${coverExt}`;
+
       const { data: cData, error: cErr } = await supabase.storage
         .from("media")
         .upload(`covers/${coverName}`, coverFile);
+
       if (cErr) throw cErr;
 
-      // 4. Get Public URLs
-      const mediaUrl = supabase.storage.from("media").getPublicUrl(mData.path).data.publicUrl;
-      const coverUrl = supabase.storage.from("media").getPublicUrl(cData.path).data.publicUrl;
+      // Get public URLs
+      const mediaUrl = supabase.storage
+        .from("media")
+        .getPublicUrl(mData.path).data.publicUrl;
 
-      // 5. Insert into Database with Genre
+      const coverUrl = supabase.storage
+        .from("media")
+        .getPublicUrl(cData.path).data.publicUrl;
+
+      // Save song to database
       const { error: dbErr } = await supabase.from("songs").insert({
         title,
         artist_name: artist,
-        genre: selectedGenre, // SAVING THE GENRE HERE
+        genre: selectedGenre,
         media_url: mediaUrl,
         cover_url: coverUrl,
         media_type: detectedType,
         status: "pending",
+        user_id: user.id, // ✅ IMPORTANT
       });
 
       if (dbErr) throw dbErr;
+
       setStatus("Success! Your track is pending admin approval.");
-      
-      // Clear form after success
+
+      // Reset form
       (e.target as HTMLFormElement).reset();
       setSelectedGenre("Afrobeats");
 

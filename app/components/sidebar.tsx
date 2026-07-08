@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, TrendingUp, Users, PlayCircle, Heart, 
-  Upload, LayoutDashboard, Menu, X, Tv 
-} from 'lucide-react';
+import {
+  Home, TrendingUp, Users, PlayCircle, Heart,
+  Upload, LayoutDashboard, Menu, X, Tv, MessageCircle, Settings
+} from "lucide-react";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,10 +15,11 @@ const Sidebar = () => {
   const menuItems = [
     { icon: <Home size={20} />, label: 'Home', href: '/' },
     { icon: <TrendingUp size={20} />, label: 'Trending', href: '/trending' },
-    { icon: <Users size={20} />, label: 'Artists', href: '/artists' }, 
+    { icon: <Users size={20} />, label: 'Artists', href: '/artists' },
     { icon: <PlayCircle size={20} />, label: 'Playlists', href: '/playlists' },
     { icon: <Heart size={20} />, label: 'Bookmarks', href: '/bookmarks' },
-    { 
+    { icon: <MessageCircle size={20} />, label: 'Inbox', href: '/inbox' },
+    {
       icon: (
         <div className="relative">
           <Tv size={20} />
@@ -27,17 +28,18 @@ const Sidebar = () => {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
           </span>
         </div>
-      ), 
-      label: 'Live Football', 
+      ),
+      label: 'Live Football',
       href: '/live-football',
-      isLive: true 
+      isLive: true
     },
-    { 
-      icon: <Upload size={20} />, 
-      label: 'Artist Upload', 
+    {
+      icon: <Upload size={20} />,
+      label: 'Artist Upload',
       href: '/artist/upload',
-      highlight: true 
+      highlight: true
     },
+    { icon: <Settings size={20} />, label: 'Settings', href: '/settings' },
     { icon: <LayoutDashboard size={20} />, label: 'Admin Panel', href: '/admin/dashboard' },
   ];
 
@@ -51,9 +53,8 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {/* SIDEBAR OVERLAY FOR MOBILE */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
           onClick={() => setIsOpen(false)}
         />
@@ -66,34 +67,33 @@ const Sidebar = () => {
         </div>
 
         <nav className="flex-1 space-y-2 mt-16 lg:mt-0 overflow-y-auto pr-1 custom-scrollbar">
-          {menuItems.map((item, index) => {
-            const isActive = item.href === '/' 
-              ? pathname === '/' 
+          {menuItems.map((item) => {
+            const isActive = item.href === '/'
+              ? pathname === '/'
               : pathname.startsWith(item.href);
-            
+
             return (
-              <Link 
-                key={item.label} 
-                href={item.href} 
+              <Link
+                key={item.label}
+                href={item.href}
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-4 p-3 rounded-xl transition-all group ${
-                  item.highlight 
-                    ? 'bg-orange-500 text-black font-black hover:bg-orange-600 shadow-lg shadow-orange-500/20 mt-6' 
-                    : isActive 
+                  item.highlight
+                    ? 'bg-orange-500 text-black font-black hover:bg-orange-600 shadow-lg shadow-orange-500/20 mt-6'
+                    : isActive
                       ? 'bg-orange-500/10 text-orange-500 border-r-4 border-orange-500 rounded-r-none'
                       : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
                 } ${item.isLive && !isActive ? 'hover:border-l-4 hover:border-red-500/50 bg-red-500/5' : ''}`}
               >
                 <div className={`transition-colors ${
-                  item.label === 'Bookmarks' && isActive 
-                    ? 'text-red-500' 
+                  item.label === 'Bookmarks' && isActive
+                    ? 'text-red-500'
                     : item.highlight && isActive
                       ? 'text-black'
                       : item.isLive ? 'text-zinc-400 group-hover:text-red-500' : ''
                 }`}>
                   {item.icon}
                 </div>
-
                 <span className="text-sm font-bold uppercase tracking-tight">
                   {item.label}
                   {item.isLive && (
@@ -105,9 +105,9 @@ const Sidebar = () => {
           })}
         </nav>
 
-        {/* BOTTOM SECTION */}
+        {/* BOTTOM */}
         <div className="pt-6 border-t border-zinc-900 mt-auto">
-           <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.2em]">© 2026 Zabus Africa</p>
+          <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.2em]">© 2026 Zabus Africa</p>
         </div>
       </aside>
     </>

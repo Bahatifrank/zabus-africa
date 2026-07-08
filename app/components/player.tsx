@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { usePlayerStore } from "@/app/store/usePlayerStore";
 import { 
   Play, Pause, SkipForward, SkipBack, Volume2, X, Maximize2, 
@@ -8,6 +8,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/utils/supabase/client";
 
 export default function Player() {
   const { 
@@ -25,6 +26,7 @@ export default function Player() {
   } = usePlayerStore();
 
   const mediaRef = useRef<HTMLVideoElement>(null); 
+  const supabase = createClient();
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -39,10 +41,8 @@ export default function Player() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState("");
-  const [comments, setComments] = useState([
-    { id: 1, user: "Alex_K", text: "This mix hits differently! 🔥" },
-    { id: 2, user: "Dev_Nesta", text: "Clean visuals, matching the energy nicely." }
-  ]);
+  const [comments, setComments] = useState<any[]>([]);
+  
 
   const activeMediaUrl = currentSong?.audio_url || currentSong?.media_url;
 
@@ -59,6 +59,7 @@ export default function Player() {
     setHasIncrementedView(false);
     // Reset subscription visual state when track shifts
     setIsSubscribed(false); 
+    fetchComments();
   }, [currentSong?.id]);
 
   useEffect(() => {
@@ -110,14 +111,65 @@ export default function Player() {
     setIsSubscribed(!isSubscribed);
     // TODO: Connect with backend user/artist subscription routing
   };
+  const fetchComments = async () => {
+  if (!currentSong) return;
 
-  const handleSendComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentInput.trim()) return;
-    setComments([...comments, { id: Date.now(), user: "You", text: commentInput }]);
-    setCommentInput("");
-    // TODO: Dispatch payload to your IndexedDB store or persistent API
-  };
+  const { data, error } = await supabase
+    .from("comments")
+    .select(`
+      id,
+      comment,
+      created_at,
+      profiles (
+        username
+      )
+    `)
+    .eq("song_id", currentSong.id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setComments(data || []);
+};
+
+  const handleSendComment = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!commentInput.trim() || !currentSong) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please login first.");
+    return;
+  }
+
+  const { error } = await supabase.from("comments").insert({
+    song_id: currentSong.id,
+    user_id: user.id,
+    comment: commentInput.trim(),
+  });
+
+  if (error) {
+    console.log("COMMENT ERROR:", error);
+    if (error.code === "23503") {
+      alert("Comment submission failed: Account record setup incomplete. Please ensure your profile is fully initialized.");
+    } else {
+      alert(error.message);
+    }
+    return;
+  }
+
+  setCommentInput("");
+  fetchComments();
+};
+
+
 
   // Safe client-side Blob media downloader function
   const handleDownload = async (e: React.MouseEvent) => {
@@ -222,16 +274,16 @@ export default function Player() {
                   {/* Comments Panel inside Expanded Player View */}
                   <div className="bg-zinc-900/40 p-4 rounded-2xl border border-white/5 flex-1 flex flex-col overflow-hidden min-h-0">
                     <div className="border-b border-white/5 pb-2 mb-2 flex justify-between items-center flex-shrink-0">
-                      <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">Comments Section</span>
-                      <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-0.5 rounded-full">{comments.length} Entries</span>
+                      <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">Comments</span>
+                      <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-0.5 rounded-full">{comments.length} chats</span>
                     </div>
 
                     {/* Scrollable Comments List Container */}
                     <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5 mb-3 custom-scrollbar min-h-0">
                       {comments.map((comment) => (
                         <div key={comment.id} className="text-xs bg-white/5 p-2 rounded-xl border border-white/[0.02]">
-                          <span className="font-bold text-orange-400 block mb-0.5">@{comment.user}</span>
-                          <p className="text-zinc-300 leading-relaxed">{comment.text}</p>
+                          <span className="font-bold text-orange-400 block mb-0.5">@{comment.profiles?.username || "anonymous"}</span>
+                          <p className="text-zinc-300 leading-relaxed">{comment.comment}</p>
                         </div>
                       ))}
                     </div>

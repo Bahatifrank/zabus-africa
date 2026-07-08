@@ -53,7 +53,7 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-black border-b border-white/5 z-[100] px-6 flex items-center justify-between">
       <div className="flex items-center gap-2 min-w-fit">
-        <span className="text-orange-500 font-black italic text-xl tracking-tighter uppercase">Zabus.Africa</span>
+        <span className="text-orange-500 font-black italic text-xl tracking-tighter uppercase">Zabus-Africa</span>
       </div>
 
       <div ref={searchRef} className="relative w-full max-w-xl mx-auto px-4">
@@ -118,7 +118,7 @@ export default function Header() {
                   ))
                 ) : !isLoading && (
                   <div className="p-10 text-center">
-                    <p className="text-zinc-500 text-sm italic font-medium">No internal results for "{query}"</p>
+                    <p className="text-zinc-500 text-sm italic font-medium">No Page found! "{query}"</p>
                   </div>
                 )}
               </div>

@@ -97,3 +97,110 @@ body {
   padding-right: 0.25rem !important;
   overflow: visible !important;
 }
+
+/* DARK (default) */
+[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0f0f0f;
+  --bg-card: #111111;
+  --border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* GLASS */
+[data-theme="glass"] body,
+[data-theme="glass"] {
+  background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #0d0d0d 100%) !important;
+}
+
+[data-theme="glass"] aside {
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="glass"] main {
+  background: transparent !important;
+}
+
+/* FIX: Added escaping backslashes (\#) to the hex values below */
+[data-theme="glass"] .bg-zinc-900,
+[data-theme="glass"] .bg-\[\#0f0f0f\],
+[data-theme="glass"] .bg-\[\#0a0a0a\] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+[data-theme="glass"] .bg-zinc-950 {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+[data-theme="glass"] .border-zinc-800,
+[data-theme="glass"] .border-zinc-900 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* MIDNIGHT */
+[data-theme="midnight"] body,
+[data-theme="midnight"] {
+  background: #05050f !important;
+}
+
+[data-theme="midnight"] aside {
+  background: #08081a !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+[data-theme="midnight"] .bg-zinc-900 {
+  background: #0d0d24 !important;
+}
+
+[data-theme="midnight"] .bg-zinc-800 {
+  background: #12122e !important;
+}
+
+[data-theme="midnight"] .bg-zinc-950 {
+  background: #05050f !important;
+}
+
+[data-theme="midnight"] .bg-black {
+  background: #05050f !important;
+}
+
+[data-theme="midnight"] .border-zinc-900 {
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+[data-theme="midnight"] .border-zinc-800 {
+  border-color: rgba(99, 102, 241, 0.15) !important;
+}
+.avatar-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.chat-image-attachment {
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
