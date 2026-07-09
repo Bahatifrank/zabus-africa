@@ -25,10 +25,10 @@ type SportGroup = {
 };
 
 const SPORT_SLUGS = [
-  { slug: "soccer", label: "Football ⚽", id: 1 },
-  { slug: "basketball", label: "Basketball 🏀", id: 2 },
-  { slug: "tennis", label: "Tennis 🎾", id: 5 },
-  { slug: "cricket", label: "Cricket 🏏", id: 196 },
+  { slug: "soccer", label: "Football ", id: 1 },
+  { slug: "basketball", label: "Basketball ", id: 2 },
+  { slug: "tennis", label: "Tennis ", id: 5 },
+  { slug: "cricket", label: "Cricket ", id: 196 },
 ];
 
 export default function LiveFootballPage() {
@@ -300,7 +300,7 @@ export default function LiveFootballPage() {
                 {selectedMatch.team_two_name}
               </span>
               <span className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">
-                {isLive(selectedMatch) ? "🔴 Live Now" : "Replay"}
+                {isLive(selectedMatch) ? " Live Now" : "Replay"}
               </span>
             </div>
             <button
