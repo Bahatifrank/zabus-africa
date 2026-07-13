@@ -16,39 +16,71 @@ const supabase = createClient();
 
 function SongCard({ song, queue, isLiked, onPlay, onBookmark, onAddToPlaylist }: any) {
   return (
-    <div className="bg-[#0f0f0f] p-4 rounded-[2.5rem] hover:bg-zinc-900 transition-all group border border-white/5 relative w-full">
-      <div className="absolute top-6 right-6 z-30 flex flex-col gap-2 translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-        <button
-          onClick={(e) => { e.stopPropagation(); onAddToPlaylist(song.id); }}
-          className="p-2.5 bg-orange-500 rounded-full hover:scale-110 transition-all text-black shadow-xl"
-        >
-          <PlusCircle size={16} />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onBookmark(song.id); }}
-          className="p-2.5 bg-black/80 backdrop-blur-md rounded-full hover:scale-110 transition-all shadow-xl"
-        >
-          <Heart size={16} fill={isLiked ? "#ef4444" : "none"} className={isLiked ? "text-red-500" : "text-white"} />
-        </button>
-      </div>
-
-      <div onClick={() => onPlay(song, queue)} className="relative aspect-square mb-5 rounded-[1.8rem] overflow-hidden cursor-pointer shadow-lg">
-        <img src={song.cover_url} className="object-cover w-full h-full group-hover:scale-110 transition duration-700" alt={song.title} />
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="bg-white p-5 rounded-full scale-75 group-hover:scale-100 transition-transform duration-300 shadow-2xl">
-            <Play fill="black" size={24} className="text-black ml-1" />
+    <div className="w-full flex flex-col group relative mb-2">
+      {/* Thumbnail Area - Edge to edge styled 16:9 aspect ratio */}
+      <div 
+        onClick={() => onPlay(song, queue)} 
+        className="relative aspect-video w-full rounded-2xl overflow-hidden cursor-pointer bg-zinc-900 shadow-md border border-white/5"
+      >
+        <img 
+          src={song.cover_url} 
+          className="object-cover w-full h-full group-hover:scale-105 transition duration-500" 
+          alt={song.title} 
+        />
+        
+        {/* Play Overlay */}
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="bg-white/90 p-4 rounded-full scale-90 group-hover:scale-100 transition-transform duration-300 shadow-xl">
+            <Play fill="black" size={18} className="text-black ml-0.5" />
           </div>
         </div>
+
+        {/* Dynamic Action Buttons Overlay (Hidden by default on mobile, reveals on hover) */}
+        <div className="absolute top-3 right-3 z-30 flex gap-2 md:opacity-0 group-hover:opacity-100 transition-all duration-300">
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddToPlaylist(song.id); }}
+            className="p-2 bg-orange-500 rounded-full hover:scale-110 transition-all text-black shadow-lg"
+          >
+            <PlusCircle size={14} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onBookmark(song.id); }}
+            className="p-2 bg-black/80 backdrop-blur-md rounded-full hover:scale-110 transition-all shadow-lg border border-white/10"
+          >
+            <Heart size={14} fill={isLiked ? "#ef4444" : "none"} className={isLiked ? "text-red-500" : "text-white"} />
+          </button>
+        </div>
       </div>
 
-      <div className="px-2">
-        <h3 className="font-black truncate text-base text-white mb-1 uppercase italic tracking-tighter leading-tight">{song.title}</h3>
-        <div className="flex items-center justify-between">
-          <Link href={`/artists/${encodeURIComponent(song.artist_name)}`}>
-            <p className="text-zinc-500 text-[10px] truncate uppercase font-bold tracking-widest hover:text-orange-500 transition-colors">{song.artist_name}</p>
-          </Link>
-          <span className="text-[8px] bg-orange-500/10 px-2 py-0.5 rounded-full text-orange-500 font-black uppercase">{song.genre || 'Mood'}</span>
+      {/* Info Row below asset - YouTube Style */}
+      <div className="mt-3 flex items-start gap-3 px-1">
+        {/* Mock Channel/Artist Avatar */}
+        <div className="h-9 w-9 rounded-full bg-zinc-800 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center">
+          <span className="text-[10px] font-black text-orange-500 uppercase">
+            {song.artist_name?.slice(0, 2) || "ZA"}
+          </span>
         </div>
+
+        {/* Meta Text */}
+        <div className="flex-1 min-w-0 pr-2">
+          <h3 className="font-bold text-sm text-zinc-100 line-clamp-2 leading-tight tracking-tight mb-0.5">
+            {song.title}
+          </h3>
+          
+          <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-400 font-medium">
+            <Link href={`/artists/${encodeURIComponent(song.artist_name)}`}>
+              <span className="hover:text-orange-500 transition-colors truncate block max-w-[140px]">
+                {song.artist_name}
+              </span>
+            </Link>
+            <span className="text-zinc-600 text-[8px]">•</span>
+            <span className="text-orange-500 text-[10px] uppercase font-bold tracking-wider">
+              {song.genre || 'Mood'}
+            </span>
+          </div>
+        </div>
+
+        {/* Mobile Action Trigger (optional 3-dot style placeholder if wanted, keeping it pure clean here) */}
       </div>
     </div>
   );
