@@ -16,7 +16,7 @@ const supabase = createClient();
 
 function SongCard({ song, queue, isLiked, onPlay, onBookmark, onAddToPlaylist }: any) {
   return (
-    <div className="bg-[#0f0f0f] p-4 rounded-[2.5rem] hover:bg-zinc-900 transition-all group border border-white/5 relative">
+    <div className="bg-[#0f0f0f] p-4 rounded-[2.5rem] hover:bg-zinc-900 transition-all group border border-white/5 relative w-full">
       <div className="absolute top-6 right-6 z-30 flex flex-col gap-2 translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
         <button
           onClick={(e) => { e.stopPropagation(); onAddToPlaylist(song.id); }}
@@ -82,7 +82,6 @@ export default function HomePage() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     setUser(authUser);
 
-    // All approved songs
     const { data: songsData } = await supabase
       .from("songs")
       .select("*")
@@ -93,7 +92,6 @@ export default function HomePage() {
     setSongs(allSongs);
     setFilteredSongs(allSongs);
 
-    // Trending — top by views + likes
     const trending = [...allSongs]
       .sort((a, b) => ((b.views || 0) + (b.likes || 0)) - ((a.views || 0) + (a.likes || 0)))
       .slice(0, 12);
@@ -102,7 +100,6 @@ export default function HomePage() {
     if (authUser) {
       setIsUserSignedIn(true);
 
-      // Bookmarks
       const { data: bookmarks } = await supabase
         .from("bookmarks")
         .select("track_id")
@@ -111,7 +108,6 @@ export default function HomePage() {
       const ids = (bookmarks || []).map((b: any) => b.track_id);
       setBookmarkedIds(ids);
 
-      // Personalized recommendations via RPC
       if (ids.length > 0) {
         const { data: recommended } = await supabase
           .rpc("get_recommended_songs", { p_user_id: authUser.id });
@@ -147,7 +143,6 @@ export default function HomePage() {
       } else {
         await supabase.from("bookmarks").upsert({ user_id: authUser.id, track_id: songId }, { onConflict: 'user_id,track_id' });
       }
-      // Refresh recommendations after bookmark change
       if (authUser) {
         const { data: recommended } = await supabase.rpc("get_recommended_songs", { p_user_id: authUser.id });
         if (recommended && recommended.length > 0) {
@@ -226,7 +221,7 @@ export default function HomePage() {
               <p className="text-zinc-500 text-[10px] uppercase tracking-widest mt-0.5">Based on your taste</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
             {recommendedSongs.map((song) => (
               <SongCard
                 key={song.id}
@@ -274,11 +269,11 @@ export default function HomePage() {
             <h2 className="text-2xl font-black italic uppercase tracking-tighter">Match Day Trending</h2>
           </div>
           {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6 px-2">
-              {[1,2,3,4,5,6].map(i => <div key={i} className="aspect-square bg-zinc-900 animate-pulse rounded-[2.5rem]" />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 px-2">
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-square bg-zinc-900 animate-pulse rounded-[2.5rem]" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
               {trendingSongs.map((song) => (
                 <SongCard
                   key={song.id}
@@ -303,11 +298,11 @@ export default function HomePage() {
           </h2>
         </div>
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 px-2">
-            {[1,2,3,4,5,6].map(i => <div key={i} className="aspect-square bg-zinc-900 animate-pulse rounded-[2.5rem]" />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 px-2">
+            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-square bg-zinc-900 animate-pulse rounded-[2.5rem]" />)}
           </div>
         ) : filteredSongs.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
             {filteredSongs.map((song) => (
               <SongCard
                 key={song.id}
