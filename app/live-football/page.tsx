@@ -333,7 +333,7 @@ export default function LiveFootballPage() {
                 {selectedMatch.team_two_name}
               </span>
               <span className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">
-                {isLive(selectedMatch) ? "🔴 Live Now" : "Replay"}
+                {isLive(selectedMatch) ? " Live Now" : "Replay"}
               </span>
             </div>
             <button onClick={() => setSelectedMatch(null)} className="text-zinc-400 hover:text-white p-2 shrink-0">
