@@ -12,6 +12,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   async function loadTheme() {
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // Default dark
+    document.documentElement.setAttribute("data-theme", "dark");
+    
     if (!user) return;
 
     const { data: profile } = await supabase

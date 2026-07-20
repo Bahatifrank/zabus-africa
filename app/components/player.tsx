@@ -2,13 +2,14 @@
 import { useRouter } from "next/navigation";
 import { usePlayerStore } from "@/app/store/usePlayerStore";
 import { 
-  Play, Pause, SkipForward, SkipBack, Volume2, X, Maximize2, 
-  Shuffle, Repeat, Loader2, Eye, Heart, MessageSquare, Send, Download 
+  Play, Pause, SkipForward, SkipBack, Volume2, X, Maximize2, Minimize2,
+  Shuffle, Repeat, Loader2, Eye, Heart, MessageSquare, Send, Download, Lock 
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
+import Link from "next/link";
 
 export default function Player() {
   const { 
@@ -25,6 +26,7 @@ export default function Player() {
     toggleLike
   } = usePlayerStore();
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLVideoElement>(null); 
   const supabase = createClient();
   const [mounted, setMounted] = useState(false);
@@ -34,19 +36,35 @@ export default function Player() {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [hasIncrementedView, setHasIncrementedView] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [isMiniPlayer, setIsMiniPlayer] = useState(false);
   
-  // New States for Subscriptions and Comments Layout
+  // States for Subscriptions and Comments Layout
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState("");
   const [comments, setComments] = useState<any[]>([]);
   
+  // Auth Intercept State
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const activeMediaUrl = currentSong?.audio_url || currentSong?.media_url;
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Sync fullscreen status
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (isPlaying && currentSong && !hasIncrementedView) {
@@ -57,7 +75,6 @@ export default function Player() {
 
   useEffect(() => {
     setHasIncrementedView(false);
-    // Reset subscription visual state when track shifts
     setIsSubscribed(false); 
     fetchComments();
   }, [currentSong?.id]);
@@ -85,9 +102,146 @@ export default function Player() {
     }
   }, [isPlaying, activeMediaUrl, volume]);
 
+  // -------------------------------------------------------------
+  // 1. BLUETOOTH SPEAKER & REMOTE CONTROL (MediaSession API)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !currentSong) return;
+
+    // Set metadata on connected Bluetooth devices / Lock screen
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title,
+      artist: currentSong.artist_name || "Zabus Africa",
+      album: "Zabus Media",
+      artwork: [
+        { src: currentSong.cover_url || "/favicon.ico", sizes: "512x512", type: "image/png" }
+      ]
+    });
+
+    // Handle remote hardware actions (Bluetooth buttons, headphone controls)
+    navigator.mediaSession.setActionHandler("play", () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler("pause", () => setIsPlaying(false));
+    navigator.mediaSession.setActionHandler("previoustrack", () => playPrevious());
+    navigator.mediaSession.setActionHandler("nexttrack", () => playNext());
+    navigator.mediaSession.setActionHandler("seekto", (details) => {
+      if (details.seekTime && mediaRef.current) {
+        mediaRef.current.currentTime = details.seekTime;
+        setCurrentTime(details.seekTime);
+      }
+    });
+
+    return () => {
+      navigator.mediaSession.setActionHandler("play", null);
+      navigator.mediaSession.setActionHandler("pause", null);
+      navigator.mediaSession.setActionHandler("previoustrack", null);
+      navigator.mediaSession.setActionHandler("nexttrack", null);
+      navigator.mediaSession.setActionHandler("seekto", null);
+    };
+  }, [currentSong, setIsPlaying, playNext, playPrevious]);
+
+  // Update MediaSession Position State for Bluetooth progress sliders
+  useEffect(() => {
+    if ("mediaSession" in navigator && duration > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: duration,
+          playbackRate: mediaRef.current?.playbackRate || 1,
+          position: currentTime
+        });
+      } catch (e) {
+        // Ignored if position state is updated too rapidly
+      }
+    }
+  }, [currentTime, duration]);
+
+  // -------------------------------------------------------------
+  // 2. KEYBOARD CONTROLS (Spacebar, Arrows, M, F)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore keybindings if typing in form inputs, textareas, or editable elements
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" || 
+        target.tagName === "TEXTAREA" || 
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      switch (e.code) {
+        case "Space":
+        case "KeyK":
+          e.preventDefault();
+          setIsPlaying(!isPlaying);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (e.shiftKey) {
+            playPrevious();
+          } else if (mediaRef.current) {
+            const newTime = Math.max(0, mediaRef.current.currentTime - 5);
+            mediaRef.current.currentTime = newTime;
+            setCurrentTime(newTime);
+          }
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (e.shiftKey) {
+            playNext();
+          } else if (mediaRef.current) {
+            const newTime = Math.min(duration, mediaRef.current.currentTime + 5);
+            mediaRef.current.currentTime = newTime;
+            setCurrentTime(newTime);
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setVolume((prev) => Math.min(1, Number((prev + 0.1).toFixed(2))));
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          setVolume((prev) => Math.max(0, Number((prev - 0.1).toFixed(2))));
+          break;
+        case "KeyM":
+          e.preventDefault();
+          setVolume((prev) => (prev > 0 ? 0 : 1));
+          break;
+        case "KeyF":
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, duration, setIsPlaying, playNext, playPrevious]);
+
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsPlaying(!isPlaying);
+  };
+
+  const toggleFullscreen = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetElement = containerRef.current || document.documentElement;
+
+    if (!document.fullscreenElement) {
+      if (targetElement.requestFullscreen) {
+        targetElement.requestFullscreen();
+      } else if ((targetElement as any).webkitRequestFullscreen) {
+        (targetElement as any).webkitRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+    }
   };
 
   const handleEnded = () => {
@@ -105,73 +259,74 @@ export default function Player() {
     if (mediaRef.current) mediaRef.current.currentTime = time;
   };
 
-  // Handler Placeholder Actions
   const handleToggleSubscribe = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsSubscribed(!isSubscribed);
-    // TODO: Connect with backend user/artist subscription routing
   };
+
+  const handleMinimize = () => {
+    setIsExpanded(false); 
+    setIsMiniPlayer(true);
+  };
+
   const fetchComments = async () => {
-  if (!currentSong) return;
+    if (!currentSong) return;
 
-  const { data, error } = await supabase
-    .from("comments")
-    .select(`
-      id,
-      comment,
-      created_at,
-      profiles (
-        username
-      )
-    `)
-    .eq("song_id", currentSong.id)
-    .order("created_at", { ascending: true });
+    const { data, error } = await supabase
+      .from("comments")
+      .select(`
+        id,
+        comment,
+        created_at,
+        profiles (
+          username
+        )
+      `)
+      .eq("song_id", currentSong.id)
+      .order("created_at", { ascending: true });
 
-  if (error) {
-    console.error(error);
-    return;
-  }
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-  setComments(data || []);
-};
+    setComments(data || []);
+  };
 
   const handleSendComment = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!commentInput.trim() || !currentSong) return;
+    if (!commentInput.trim() || !currentSong) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    alert("Please login first.");
-    return;
-  }
-
-  const { error } = await supabase.from("comments").insert({
-    song_id: currentSong.id,
-    user_id: user.id,
-    comment: commentInput.trim(),
-  });
-
-  if (error) {
-    console.log("COMMENT ERROR:", error);
-    if (error.code === "23503") {
-      alert("Comment submission failed: Account record setup incomplete. Please ensure your profile is fully initialized.");
-    } else {
-      alert(error.message);
+    if (!user) {
+      setShowAuthModal(true);
+      return;
     }
-    return;
-  }
 
-  setCommentInput("");
-  fetchComments();
-};
+    const { error } = await supabase.from("comments").insert({
+      song_id: currentSong.id,
+      user_id: user.id,
+      comment: commentInput.trim(),
+    });
 
+    if (error) {
+      console.log("COMMENT ERROR:", error);
+      if (error.code === "23503") {
+        alert("Comment submission failed: Account record setup incomplete.");
+      } else {
+        alert(error.message);
+      }
+      return;
+    }
 
+    setCommentInput("");
+    fetchComments();
+  };
 
-  // Safe client-side Blob media downloader function
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation(); 
     if (!activeMediaUrl) return;
@@ -183,8 +338,6 @@ export default function Player() {
       
       const link = document.createElement("a");
       link.href = blobUrl;
-      
-      // Fallback file name formatting using track name
       const fileName = `${currentSong.title.replace(/\s+/g, "_")}_Zabus.mp4`; 
       link.download = fileName;
 
@@ -193,7 +346,6 @@ export default function Player() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      console.error("Download failed, falling back to new tab window opening:", error);
       window.open(activeMediaUrl, "_blank");
     }
   };
@@ -201,7 +353,7 @@ export default function Player() {
   if (!currentSong || !mounted) return null;
 
   return createPortal(
-    <div className="relative">
+    <div ref={containerRef}>
       <AnimatePresence>
         {(isExpanded && !isMiniPlayer) && (
           <motion.div 
@@ -212,8 +364,8 @@ export default function Player() {
             <div className="h-16 px-4 md:px-6 flex items-center justify-between bg-zinc-950 border-b border-white/5 flex-shrink-0">
               <span className="text-orange-500 font-black italic tracking-tighter uppercase text-sm md:text-base">ZABUS</span>
               <button 
-                onClick={() => setIsExpanded(false)} 
-                className="bg-white/10 px-3 py-1.5 rounded-full text-white text-[10px] md:text-xs font-bold uppercase flex items-center gap-2 hover:bg-orange-500 transition-colors"
+                onClick={handleMinimize} 
+                className="bg-orange-500 hover:bg-orange-600 px-4 py-1.5 rounded-full text-white text-[10px] md:text-xs font-black uppercase flex items-center gap-2 transition-colors shadow-lg cursor-pointer"
               >
                 Minimize <X size={16} />
               </button>
@@ -221,7 +373,7 @@ export default function Player() {
             
             {/* Content Container Frame */}
             <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-6 lg:p-8 gap-6 overflow-hidden min-h-0">
-                {/* Visualizer Video Section */}
+                {/* Visualizer Video Section Placeholder */}
                 <div className="w-full lg:flex-[3] aspect-video rounded-2xl md:rounded-3xl flex items-center justify-center bg-zinc-950/50 border border-white/5 overflow-hidden max-h-[35vh] sm:max-h-[45vh] lg:max-h-full self-center">
                    {isLoading && (
                      <div className="flex flex-col items-center gap-4">
@@ -231,7 +383,7 @@ export default function Player() {
                    )}
                 </div>
                 
-                {/* Details and Info Context Frame */}
+                {/* Details Frame */}
                 <div className="flex-1 flex flex-col gap-4 min-w-[300px] lg:max-w-[450px] h-full overflow-hidden">
                   <div className="bg-zinc-900/80 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/5 flex justify-between items-center flex-shrink-0">
                     <div className="truncate pr-4">
@@ -245,7 +397,7 @@ export default function Player() {
                       <div className="flex flex-col items-center">
                         <div className="flex items-center gap-1.5 text-zinc-400">
                           <Eye size={16} className="md:size-[18px]" />
-                          <span className="font-black text-xs md:text-sm">{(currentSong.views || 0).toLocaleString()}</span>
+                          <span className="font-black text-xs md:text-sm">{currentSong.views ? currentSong.views.toLocaleString() : 0}</span>
                         </div>
                         <span className="text-[7px] md:text-[8px] text-zinc-500 uppercase font-bold tracking-tighter">Views</span>
                       </div>
@@ -264,21 +416,20 @@ export default function Player() {
                               (currentSong.likes > 0) ? "fill-red-500 text-red-500" : ""
                             }`} 
                           />
-                          <span className="font-black text-xs md:text-sm">{(currentSong.likes || 0).toLocaleString()}</span>
+                          <span className="font-black text-xs md:text-sm">{currentSong.likes ? currentSong.likes.toLocaleString() : 0}</span>
                         </div>
                         <span className="text-[7px] md:text-[8px] text-zinc-500 uppercase font-bold tracking-tighter">Likes</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Comments Panel inside Expanded Player View */}
+                  {/* Comments Panel */}
                   <div className="bg-zinc-900/40 p-4 rounded-2xl border border-white/5 flex-1 flex flex-col overflow-hidden min-h-0">
                     <div className="border-b border-white/5 pb-2 mb-2 flex justify-between items-center flex-shrink-0">
                       <span className="text-xs font-black tracking-widest text-zinc-400 uppercase">Comments</span>
                       <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-0.5 rounded-full">{comments.length} chats</span>
                     </div>
 
-                    {/* Scrollable Comments List Container */}
                     <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5 mb-3 custom-scrollbar min-h-0">
                       {comments.map((comment) => (
                         <div key={comment.id} className="text-xs bg-white/5 p-2 rounded-xl border border-white/[0.02]">
@@ -288,7 +439,6 @@ export default function Player() {
                       ))}
                     </div>
 
-                    {/* Pinned Input Bar - Visible & Screen Safe */}
                     <form onSubmit={handleSendComment} className="flex gap-2 items-center bg-zinc-950 p-2 rounded-xl border border-white/10 flex-shrink-0">
                       <input 
                         type="text"
@@ -311,6 +461,7 @@ export default function Player() {
         )}
       </AnimatePresence>
 
+      {/* Floating Video Window */}
       <div 
         onClick={(e) => {
             if (isMiniPlayer) {
@@ -320,18 +471,22 @@ export default function Player() {
                 togglePlay(e);
             }
         }}
-        className={`fixed transition-all duration-500 ease-in-out cursor-pointer group shadow-2xl overflow-hidden ${
-          isExpanded 
-          ? isMiniPlayer 
-            ? 'z-[99999995] bottom-24 right-4 md:right-8 w-64 md:w-80 aspect-video rounded-xl border border-white/20' 
-            : 'z-[99999995] top-[80px] left-4 right-4 lg:left-[48px] lg:right-auto w-[calc(100%-32px)] lg:w-[calc(75%-72px)] h-auto aspect-video rounded-2xl md:rounded-3xl opacity-100' 
-          : 'z-[-1] bottom-24 left-6 w-0 h-0 opacity-0 pointer-events-none'
+        onDoubleClick={toggleFullscreen}
+        className={`fixed transition-all duration-300 ease-in-out cursor-pointer group shadow-2xl overflow-hidden ${
+          isFullscreen
+          ? 'fixed inset-0 z-[99999998] w-full h-full rounded-none'
+          : isMiniPlayer 
+            ? 'z-[99999998] bottom-24 right-4 md:right-8 w-64 md:w-80 aspect-video rounded-xl border-2 border-orange-500/80 bg-black shadow-orange-500/10 shadow-2xl' 
+            : isExpanded 
+              ? 'z-[99999995] top-[80px] left-4 right-4 lg:left-[48px] lg:right-auto w-[calc(100%-32px)] lg:w-[calc(75%-72px)] h-auto aspect-video rounded-2xl md:rounded-3xl opacity-100' 
+              : 'z-[-1] bottom-24 left-6 w-0 h-0 opacity-0 pointer-events-none'
         }`}
       >
         <video 
           ref={mediaRef}
           preload="auto"
           crossOrigin="anonymous" 
+          controls={false}
           onLoadedData={() => setIsLoading(false)}
           onPlaying={() => setIsLoading(false)} 
           onWaiting={() => setIsLoading(true)} 
@@ -343,22 +498,26 @@ export default function Player() {
         />
         
         {isMiniPlayer && (
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between p-3 pointer-events-none">
+            <span className="text-[10px] text-white font-extrabold uppercase bg-black/70 px-2 py-1 rounded">Expand</span>
             <button 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsMiniPlayer(false);
-                    setIsExpanded(false);
-                }}
-                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-orange-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all z-20"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMiniPlayer(false);
+                setIsExpanded(false);
+              }}
+              className="p-1.5 bg-black/80 hover:bg-orange-500 rounded-full text-white pointer-events-auto transition-colors"
+              title="Close Video Window"
             >
-                <X size={14} />
+              <X size={14} />
             </button>
+          </div>
         )}
 
         {!isMiniPlayer && (
-             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 pointer-events-none">
-                {isPlaying ? <Pause size={48} className="text-white/50" /> : <Play size={48} className="text-white/50" />}
-             </div>
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 pointer-events-none">
+            {isPlaying ? <Pause size={48} className="text-white/50" /> : <Play size={48} className="text-white/50" />}
+          </div>
         )}
       </div>
 
@@ -381,7 +540,6 @@ export default function Player() {
               {isLoading ? "LOADING..." : currentSong.title}
             </h4>
             
-            {/* Added Subscription Button Inline Layout */}
             <div className="flex items-center gap-2 mt-0.5 max-w-full">
               <p className="text-[8px] md:text-[10px] text-zinc-500 font-bold uppercase truncate max-w-[60%]">
                 {currentSong.artist_name}
@@ -399,7 +557,6 @@ export default function Player() {
             </div>
           </div>
           
-          {/* Quick Trigger to launch Full View Comments Area */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -407,7 +564,6 @@ export default function Player() {
               setIsExpanded(true);
             }}
             className="text-zinc-500 hover:text-white transition-colors ml-1 hidden md:block flex-shrink-0"
-            title="Open Tracker Details & Comments"
           >
             <MessageSquare size={15} />
           </button>
@@ -441,7 +597,7 @@ export default function Player() {
           <div className="relative w-full group flex items-center h-4">
             <input 
               type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek}
-              className="absolute w-full h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute w-full h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer z-10 opacity-0 group-hover:opacity-100 transition-opacity accent-orange-500"
             />
             <div className="absolute w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
               <div 
@@ -452,41 +608,79 @@ export default function Player() {
           </div>
         </div>
 
+        {/* Right Controls Bar */}
         <div className="w-[15%] sm:w-[22%] md:w-[30%] flex justify-end items-center gap-2 md:gap-4">
-            {/* Added: Track Downloader Option Action */}
-            <button 
-                onClick={handleDownload}
-                className="text-zinc-500 hover:text-white transition-colors"
-                title="Download Track"
-            >
+            <button onClick={handleDownload} className="text-zinc-500 hover:text-white transition-colors">
                 <Download size={18} />
             </button>
 
             <button 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsMiniPlayer(!isMiniPlayer);
-                }}
-                className={`hidden md:block transition-colors ${isMiniPlayer ? 'text-orange-500' : 'text-zinc-500 hover:text-white'}`}
-                title="Toggle Miniplayer"
+                onClick={toggleFullscreen}
+                className="hidden md:block transition-colors text-zinc-500 hover:text-orange-500"
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
             >
-                <Maximize2 size={18} className="rotate-180" />
+                {isFullscreen ? <Minimize2 size={18} className="text-orange-500" /> : <Maximize2 size={18} />}
             </button>
 
             <div className="hidden md:flex items-center">
-                <Volume2 size={18} className="text-zinc-500 mr-2" />
-                <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="w-16 lg:w-24 accent-orange-500 cursor-pointer" />
+                <Volume2 size={18} className="text-orange-500 mr-2" />
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.01" 
+                  value={volume} 
+                  onChange={(e) => setVolume(Number(e.target.value))} 
+                  className="w-16 lg:w-24 accent-orange-500 cursor-pointer" 
+                />
             </div>
             
-            <button onClick={(e) => {
-                e.stopPropagation();
-                setIsMiniPlayer(false);
-                setIsExpanded(true);
-            }} className="md:hidden text-zinc-400">
-                <Maximize2 size={18} />
+            <button onClick={toggleFullscreen} className="md:hidden text-zinc-400 hover:text-orange-500">
+                {isFullscreen ? <Minimize2 size={18} className="text-orange-500" /> : <Maximize2 size={18} />}
             </button>
         </div>
       </div>
+
+      {/* Auth Modal Overlay */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000000] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0a0a0a] border border-white/10 w-full max-w-md rounded-[2.5rem] p-8 sm:p-12 shadow-[0_0_50px_rgba(249,115,22,0.15)] relative"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-black italic uppercase text-orange-500 tracking-tighter">
+                  Access Denied
+                </h2>
+                <button onClick={() => setShowAuthModal(false)} className="text-zinc-500 hover:text-white transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="text-center py-4">
+                <Lock className="text-orange-500 mx-auto mb-5 animate-bounce" size={44} />
+                <p className="font-bold text-zinc-400 mb-8 px-2 text-xs sm:text-sm uppercase tracking-widest leading-relaxed">
+                  Login to join the community and post public comments
+                </p>
+                <Link 
+                  href="/login" 
+                  onClick={() => setShowAuthModal(false)}
+                  className="block w-full bg-white text-black font-black text-xs uppercase tracking-[0.2em] py-4 rounded-xl hover:bg-orange-500 hover:text-white transition-all text-center"
+                >
+                  Sign In Now
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>,
     document.body
   );

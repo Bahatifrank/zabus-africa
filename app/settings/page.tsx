@@ -141,12 +141,14 @@ export default function SettingsPage() {
   }
 
   async function saveTheme(selectedTheme: string) {
-    setTheme(selectedTheme);
-    if (!user) return;
-    await supabase.from("profiles").update({ theme: selectedTheme }).eq("id", user.id);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
+  setTheme(selectedTheme);
+  // Apply instantly to the page
+  document.documentElement.setAttribute("data-theme", selectedTheme);
+  if (!user) return;
+  await supabase.from("profiles").update({ theme: selectedTheme }).eq("id", user.id);
+  setSaved(true);
+  setTimeout(() => setSaved(false), 2000);
+}
 
   async function changePassword() {
     setPassError("");

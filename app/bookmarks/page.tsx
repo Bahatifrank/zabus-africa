@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { usePlayerStore } from "@/app/store/usePlayerStore";
-import { Play, Heart, Music, ArrowLeft } from "lucide-react";
+import { Play, Heart, Music, ArrowLeft, Lock, X } from "lucide-react";
 import Link from "next/link";
 
 export default function BookmarksPage() {
@@ -12,14 +12,21 @@ export default function BookmarksPage() {
   const { setCurrentSong, setIsPlaying } = usePlayerStore(); // Added setIsPlaying
   const supabase = createClient();
 
+  // Modal Auth Intercept state management
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [isUserSignedIn, setIsUserSignedIn] = useState(false);
+
   useEffect(() => {
     async function fetchBookmarkedSongs() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
+          setIsUserSignedIn(false);
           setLoading(false);
           return;
         }
+
+        setIsUserSignedIn(true);
 
         const { data, error } = await supabase
           .from("bookmarks")
@@ -97,7 +104,13 @@ export default function BookmarksPage() {
 
   async function toggleBookmark(songId: string) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    
+    // Smooth intercept: Open auth modal overlay if guest clicks heart
+    if (!user) {
+      setIsUserSignedIn(false);
+      setShowPlaylistModal(true);
+      return;
+    }
 
     const removedSong = songs.find((s) => s.id === songId);
     setSongs((prev) => prev.filter((song) => song.id !== songId));
@@ -125,7 +138,7 @@ export default function BookmarksPage() {
   }
 
   return (
-    <div className="p-6 pb-32 bg-black min-h-screen text-white">
+    <div className="p-4 sm:p-6 pb-32 bg-black min-h-screen text-white">
       <div className="flex items-center gap-4 mb-12">
         <Link
           href="/"
@@ -134,7 +147,7 @@ export default function BookmarksPage() {
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         </Link>
         <div>
-          <h1 className="text-5xl font-black italic uppercase tracking-tighter">
+          <h1 className="text-4xl sm:text-5xl font-black italic uppercase tracking-tighter">
             My Bookmarks
           </h1>
           <p className="text-orange-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-1">
@@ -144,45 +157,60 @@ export default function BookmarksPage() {
       </div>
 
       {songs.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-8 gap-x-4 px-1">
           {songs.map((song) => (
             <div
               key={song.id}
-              className="bg-[#0a0a0a] p-4 rounded-[2rem] hover:bg-[#121212] transition-all group border border-white/5 relative"
+              className="w-full flex flex-col group relative mb-2"
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleBookmark(song.id);
-                }}
-                className="absolute top-4 left-4 z-30 p-2 bg-black/60 backdrop-blur-md rounded-full hover:scale-110 transition-all shadow-2xl border border-white/10"
-              >
-                <Heart size={14} fill="#ef4444" className="text-red-500" />
-              </button>
-
+              {/* Thumbnail Area - YouTube Widescreen Style */}
               <div
                 onClick={() => handlePlay(song)}
-                className="relative aspect-square mb-4 rounded-2xl overflow-hidden cursor-pointer"
+                className="relative aspect-video w-full rounded-2xl overflow-hidden cursor-pointer bg-zinc-900 shadow-md border border-white/5"
               >
                 <img
                   src={song.cover_url}
-                  className="object-cover w-full h-full group-hover:scale-110 transition duration-700"
+                  className="object-cover w-full h-full group-hover:scale-105 transition duration-500"
                   alt={song.title}
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="bg-orange-500 p-4 rounded-full scale-75 group-hover:scale-100 transition-transform duration-300">
-                    <Play fill="black" size={24} className="text-black ml-1" />
+                
+                {/* Play Overlay */}
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="bg-white/90 p-4 rounded-full scale-90 group-hover:scale-100 transition-transform duration-300 shadow-xl">
+                    <Play fill="black" size={18} className="text-black ml-0.5" />
                   </div>
                 </div>
+
+                {/* Heart Button Overlay */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleBookmark(song.id);
+                  }}
+                  className="absolute top-3 left-3 z-30 p-2 bg-black/80 backdrop-blur-md rounded-full hover:scale-110 transition-all shadow-lg border border-white/10"
+                >
+                  <Heart size={14} fill="#ef4444" className="text-red-500" />
+                </button>
               </div>
 
-              <div className="px-1">
-                <h3 className="font-black truncate text-sm text-white mb-1 uppercase italic tracking-tight">
-                  {song.title}
-                </h3>
-                <p className="text-zinc-500 text-[10px] truncate uppercase font-black tracking-widest">
-                  {song.artist_name}
-                </p>
+              {/* Info Row below image Asset */}
+              <div className="mt-3 flex items-start gap-3 px-1">
+                {/* Mock Channel/Artist Avatar */}
+                <div className="h-9 w-9 rounded-full bg-zinc-800 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                  <span className="text-[10px] font-black text-orange-500 uppercase">
+                    {song.artist_name?.slice(0, 2) || "ZA"}
+                  </span>
+                </div>
+
+                {/* Title & Meta Area */}
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="font-bold text-sm text-zinc-100 line-clamp-2 leading-tight tracking-tight mb-0.5">
+                    {song.title}
+                  </h3>
+                  <p className="text-zinc-400 text-[11px] truncate font-medium">
+                    {song.artist_name}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
@@ -201,6 +229,31 @@ export default function BookmarksPage() {
           >
             Discover Music
           </Link>
+        </div>
+      )}
+
+      {/* AUTHENTICATION OVERLAY MODAL FOR GUESTS */}
+      {showPlaylistModal && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-md rounded-[2.5rem] sm:rounded-[3.5rem] p-8 sm:p-12 shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl sm:text-3xl font-black italic uppercase text-orange-500 tracking-tighter">
+                Access Denied
+              </h2>
+              <button onClick={() => setShowPlaylistModal(false)} className="text-zinc-500 hover:text-white transition-all">
+                <X size={28} />
+              </button>
+            </div>
+            <div className="text-center py-6">
+              <Lock className="text-orange-500 mx-auto mb-5" size={44} />
+              <p className="font-bold text-zinc-400 mb-6 px-4 text-xs sm:text-sm uppercase tracking-widest leading-relaxed">
+                Login to curate your personal stadium collection
+              </p>
+              <Link href="/login" className="block w-full bg-white text-black font-black text-xs uppercase tracking-[0.2em] py-4 rounded-xl hover:bg-orange-500 transition-all text-center">
+                Sign In Now
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </div>
