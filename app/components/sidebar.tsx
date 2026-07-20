@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { 
   Home, TrendingUp, Users, Music, Bookmark, Mail, 
   Tv, Upload, Settings, Loader2, LogIn,
-  Image as ImageIcon, ChevronDown, X, LayoutDashboard
+  Image as ImageIcon, ChevronDown, X, LayoutDashboard, Menu
 } from "lucide-react";
 
 const GENRES = [
@@ -18,6 +18,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const supabase = createClient();
 
+  const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingUser, setLoadingUser] = useState(true);
@@ -112,15 +113,51 @@ export default function Sidebar() {
     { name: "INBOX", href: "/inbox", icon: Mail },
   ];
 
+  const closeMobile = () => setIsOpen(false);
+
   return (
     <>
-      <aside className="w-64 lg:w-72 h-screen bg-black border-r border-white/5 flex flex-col p-6 select-none flex-shrink-0 overflow-y-auto custom-scrollbar">
+      {/* Mobile Header Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black border-b border-white/5 flex items-center justify-between px-4 z-40">
+        <Link href="/">
+          <h1 className="text-orange-500 font-black italic tracking-tighter uppercase text-lg">
+            ZABUS-AFRICA
+          </h1>
+        </Link>
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="text-white p-2 rounded-lg hover:bg-zinc-900 transition-colors"
+        >
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div 
+          onClick={closeMobile}
+          className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+        />
+      )}
+
+      {/* Responsive Drawer Sidebar */}
+      <aside className={`fixed md:static top-0 left-0 z-50 w-64 lg:w-72 h-screen bg-black border-r border-white/5 flex flex-col p-6 select-none flex-shrink-0 overflow-y-auto custom-scrollbar transition-transform duration-300 ease-in-out ${
+        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}>
         <div className="flex flex-col gap-8">
-          <Link href="/" className="inline-block relative z-10">
-  <h1 className="text-orange-500 font-black italic tracking-tighter uppercase text-xl lg:text-2xl relative !before:content-none !after:content-none [text-shadow:none]">
-    ZABUS-AFRICA
-  </h1>
-</Link>
+          <div className="flex items-center justify-between">
+            <Link href="/" onClick={closeMobile} className="inline-block relative z-10">
+              <h1 className="text-orange-500 font-black italic tracking-tighter uppercase text-xl lg:text-2xl relative !before:content-none !after:content-none [text-shadow:none]">
+                ZABUS-AFRICA
+              </h1>
+            </Link>
+            <button 
+              onClick={closeMobile}
+              className="md:hidden text-zinc-400 hover:text-white p-1"
+            >
+              <X size={20} />
+            </button>
+          </div>
 
           <nav className="flex flex-col gap-2">
             {navItems.map((item) => {
@@ -130,6 +167,7 @@ export default function Sidebar() {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={closeMobile}
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase transition-all ${
                     isActive
                       ? "bg-zinc-900 text-white border border-white/5"
@@ -144,6 +182,7 @@ export default function Sidebar() {
 
             <Link
               href="/live-football"
+              onClick={closeMobile}
               className="flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase transition-all bg-red-950/20 text-zinc-300 border border-red-500/10 hover:border-red-500/30 group"
             >
               <div className="flex items-center gap-4">
@@ -158,6 +197,7 @@ export default function Sidebar() {
             {!loadingUser && !user && (
               <Link
                 href="/login"
+                onClick={closeMobile}
                 className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase transition-all ${
                   pathname === "/login" ? "bg-zinc-900 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
                 }`}
@@ -177,7 +217,7 @@ export default function Sidebar() {
           ) : (
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => { setUploadStatus(""); setIsUploadOpen(true); }}
+                onClick={() => { closeMobile(); setUploadStatus(""); setIsUploadOpen(true); }}
                 className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wider py-4 rounded-xl transition-all shadow-[0_4px_20px_rgba(249,115,22,0.15)]"
               >
                 <Upload size={16} />
@@ -186,6 +226,7 @@ export default function Sidebar() {
 
               <Link
                 href="/settings"
+                onClick={closeMobile}
                 className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
                   pathname.startsWith("/settings") ? "bg-zinc-900 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
                 }`}
@@ -198,6 +239,7 @@ export default function Sidebar() {
               {user && isAdmin && (
                 <Link
                   href="/admin/dashboard"
+                  onClick={closeMobile}
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
                     pathname.startsWith("/admin/dashboard") ? "bg-zinc-900 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
                   }`}
@@ -209,7 +251,7 @@ export default function Sidebar() {
 
               {user && (
                 <button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={() => { closeMobile(); supabase.auth.signOut(); }}
                   className="text-left text-zinc-600 hover:text-red-400 text-[10px] font-bold tracking-widest uppercase mt-2 px-4 transition-colors"
                 >
                   Sign Out Account
