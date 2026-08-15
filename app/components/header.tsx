@@ -129,7 +129,7 @@ export default function Header() {
 
       <div className="flex items-center gap-3 min-w-fit">
         <button className="bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black px-6 py-2 rounded-full transition-all uppercase tracking-tighter">
-          Home of Entertainment
+          Entertainment
         </button>
       </div>
     </header>

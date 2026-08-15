@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, TouchEvent, MouseEvent } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { usePlayerStore } from "@/app/store/usePlayerStore";
-import { Play, Flame, PlusCircle, Check, X, AlertCircle, Lock, Heart, Music2, Sparkles } from "lucide-react";
+import { Play, Flame, PlusCircle, Check, X, AlertCircle, Lock, Heart, Music2, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const GENRES = [
@@ -12,15 +12,190 @@ const GENRES = [
   "Pop", "Traditional", "Highlife"
 ];
 
+const HERO_SLIDES = [
+  {
+    id: 1,
+    title: "ZABUS AFRICA",
+    subtitle: "Stadium Live Experience",
+    image: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2070",
+  },
+  {
+    id: 2,
+    title: "AFROBEATS RISING",
+    subtitle: "New Sound Waves",
+    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=2070",
+  },
+  {
+    id: 3,
+    title: "AMAPIANO GROOVES",
+    subtitle: "Direct From South Africa",
+    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=2070",
+  },
+];
+
 const supabase = createClient();
+
+function HeroCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startTimer = () => {
+    stopTimer();
+    timerRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  useEffect(() => {
+    startTimer();
+    return () => stopTimer();
+  }, []);
+
+  const handleNext = () => {
+    stopTimer();
+    setCurrentIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+    startTimer();
+  };
+
+  const handlePrev = () => {
+    stopTimer();
+    setCurrentIndex((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+    startTimer();
+  };
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: TouchEvent) => {
+    stopTimer();
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) {
+      startTimer();
+      return;
+    }
+    const distance = touchStart - touchEnd;
+    if (distance > minSwipeDistance) handleNext();
+    else if (distance < -minSwipeDistance) handlePrev();
+    else startTimer();
+  };
+
+  const onMouseDown = (e: MouseEvent) => {
+    stopTimer();
+    setIsDragging(true);
+    setTouchEnd(null);
+    setTouchStart(e.clientX);
+  };
+
+  const onMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    setTouchEnd(e.clientX);
+  };
+
+  const onMouseUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (!touchStart || !touchEnd) {
+      startTimer();
+      return;
+    }
+    const distance = touchStart - touchEnd;
+    if (distance > minSwipeDistance) handleNext();
+    else if (distance < -minSwipeDistance) handlePrev();
+    else startTimer();
+  };
+
+  return (
+    <div 
+      className="relative h-[200px] sm:h-[240px] md:h-[280px] w-full rounded-2xl sm:rounded-3xl md:rounded-[3.5rem] overflow-hidden shadow-2xl border border-white/5 select-none touch-pan-y"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+    >
+      {/* Dynamic Slide Container with exact 100% viewport sliding */}
+      <div 
+        className="flex w-full h-full transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+      >
+        {HERO_SLIDES.map((slide) => (
+          <div key={slide.id} className="relative w-full min-w-full h-full flex-shrink-0">
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
+            <img 
+              src={slide.image} 
+              className="absolute inset-0 w-full h-full object-cover opacity-60 grayscale pointer-events-none" 
+              alt={slide.title} 
+            />
+            <div className="relative z-20 h-full flex flex-col justify-end p-5 sm:p-8 md:p-12">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-3">
+                <div className="h-0.5 sm:h-1 w-6 sm:w-10 bg-orange-500 rounded-full" />
+                <span className="text-orange-500 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[8px] sm:text-[10px]">
+                  {slide.subtitle}
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-5xl md:text-7xl font-black italic tracking-tighter uppercase leading-none truncate">
+                {slide.title}
+              </h1>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Manual Navigation Controls */}
+      <button 
+        onClick={handlePrev}
+        className="absolute left-3 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/40 hover:bg-black/70 backdrop-blur-md rounded-full text-white border border-white/10 hidden sm:flex items-center justify-center transition-all"
+        aria-label="Previous Slide"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <button 
+        onClick={handleNext}
+        className="absolute right-3 top-1/2 -translate-y-1/2 z-30 p-2 bg-black/40 hover:bg-black/70 backdrop-blur-md rounded-full text-white border border-white/10 hidden sm:flex items-center justify-center transition-all"
+        aria-label="Next Slide"
+      >
+        <ChevronRight size={20} />
+      </button>
+
+      {/* Slide Indicators */}
+      <div className="absolute bottom-3 right-4 sm:bottom-6 sm:right-8 z-30 flex gap-1.5 sm:gap-2">
+        {HERO_SLIDES.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => { stopTimer(); setCurrentIndex(idx); startTimer(); }}
+            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+              currentIndex === idx ? "w-6 sm:w-8 bg-orange-500" : "w-1.5 sm:w-2 bg-white/40 hover:bg-white/70"
+            }`}
+            aria-label={`Go to slide ${idx + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SongCard({ song, queue, isLiked, onPlay, onBookmark, onAddToPlaylist }: any) {
   return (
-    <div className="w-full flex flex-col group relative mb-2">
-      {/* Thumbnail Area - Edge to edge styled 16:9 aspect ratio */}
+    <div className="w-full flex flex-col group relative mb-1 sm:mb-2">
       <div 
         onClick={() => onPlay(song, queue)} 
-        className="relative aspect-video w-full rounded-2xl overflow-hidden cursor-pointer bg-zinc-900 shadow-md border border-white/5"
+        className="relative aspect-video w-full rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer bg-zinc-900 shadow-md border border-white/5"
       >
         <img 
           src={song.cover_url} 
@@ -28,63 +203,57 @@ function SongCard({ song, queue, isLiked, onPlay, onBookmark, onAddToPlaylist }:
           alt={song.title} 
         />
         
-        {/* Play Overlay */}
         <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="bg-white/90 p-4 rounded-full scale-90 group-hover:scale-100 transition-transform duration-300 shadow-xl">
-            <Play fill="black" size={18} className="text-black ml-0.5" />
+          <div className="bg-white/90 p-2.5 sm:p-4 rounded-full scale-90 group-hover:scale-100 transition-transform duration-300 shadow-xl">
+            <Play fill="black" size={16} className="text-black ml-0.5 sm:w-[18px] sm:h-[18px]" />
           </div>
         </div>
 
-        {/* Dynamic Action Buttons Overlay (Hidden by default on mobile, reveals on hover) */}
-        <div className="absolute top-3 right-3 z-30 flex gap-2 md:opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex gap-1.5 sm:gap-2 md:opacity-0 group-hover:opacity-100 transition-all duration-300">
           <button
             onClick={(e) => { e.stopPropagation(); onAddToPlaylist(song.id); }}
-            className="p-2 bg-orange-500 rounded-full hover:scale-110 transition-all text-black shadow-lg"
+            className="p-1.5 sm:p-2 bg-orange-500 rounded-full hover:scale-110 transition-all text-black shadow-lg"
           >
-            <PlusCircle size={14} />
+            <PlusCircle size={12} className="sm:w-[14px] sm:h-[14px]" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onBookmark(song.id); }}
-            className="p-2 bg-black/80 backdrop-blur-md rounded-full hover:scale-110 transition-all shadow-lg border border-white/10"
+            className="p-1.5 sm:p-2 bg-black/80 backdrop-blur-md rounded-full hover:scale-110 transition-all shadow-lg border border-white/10"
           >
-            <Heart size={14} fill={isLiked ? "#ef4444" : "none"} className={isLiked ? "text-red-500" : "text-white"} />
+            <Heart size={12} fill={isLiked ? "#ef4444" : "none"} className={`sm:w-[14px] sm:h-[14px] ${isLiked ? "text-red-500" : "text-white"}`} />
           </button>
         </div>
       </div>
 
-      {/* Info Row below asset - YouTube Style */}
-      <div className="mt-3 flex items-start gap-3 px-1">
-        {/* Mock Channel/Artist Avatar */}
-        <div className="h-9 w-9 rounded-full bg-zinc-800 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center">
-          <span className="text-[10px] font-black text-orange-500 uppercase">
+      <div className="mt-2 sm:mt-3 flex items-start gap-2 sm:gap-3 px-0.5 sm:px-1">
+        <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-full bg-zinc-800 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center">
+          <span className="text-[9px] sm:text-[10px] font-black text-orange-500 uppercase">
             {song.artist_name?.slice(0, 2) || "ZA"}
           </span>
         </div>
 
-        {/* Meta Text */}
-        <div className="flex-1 min-w-0 pr-2">
-          <h3 className="font-bold text-sm text-zinc-100 line-clamp-2 leading-tight tracking-tight mb-0.5">
+        <div className="flex-1 min-w-0 pr-1 sm:pr-2">
+          <h3 className="font-bold text-xs sm:text-sm text-zinc-100 line-clamp-2 leading-tight tracking-tight mb-0.5">
             {song.title}
           </h3>
           
-          <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-400 font-medium">
+          <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 text-[10px] sm:text-[11px] text-zinc-400 font-medium">
             <Link href={`/artists/${encodeURIComponent(song.artist_name)}`}>
-              <span className="hover:text-orange-500 transition-colors truncate block max-w-[140px]">
+              <span className="hover:text-orange-500 transition-colors truncate block max-w-[90px] sm:max-w-[140px]">
                 {song.artist_name}
               </span>
             </Link>
-            <span className="text-zinc-600 text-[8px]">•</span>
-            <span className="text-orange-500 text-[10px] uppercase font-bold tracking-wider">
+            <span className="text-zinc-600 text-[6px] sm:text-[8px]">•</span>
+            <span className="text-orange-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider">
               {song.genre || 'Mood'}
             </span>
           </div>
         </div>
-
-        {/* Mobile Action Trigger (optional 3-dot style placeholder if wanted, keeping it pure clean here) */}
       </div>
     </div>
   );
 }
+
 export default function HomePage() {
   const [songs, setSongs] = useState<any[]>([]);
   const [filteredSongs, setFilteredSongs] = useState<any[]>([]);
@@ -226,33 +395,23 @@ export default function HomePage() {
   });
 
   return (
-    <div className="p-6 space-y-10 pb-32 bg-black min-h-screen text-white font-sans">
-      {/* HERO */}
-      <div className="relative h-[280px] w-full rounded-[3.5rem] overflow-hidden shadow-2xl border border-white/5">
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
-        <img src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2070" className="absolute inset-0 w-full h-full object-cover opacity-60 grayscale" alt="" />
-        <div className="relative z-20 h-full flex flex-col justify-end p-12">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="h-1 w-10 bg-orange-500 rounded-full" />
-            <span className="text-orange-500 font-black uppercase tracking-[0.4em] text-[10px]">Stadium Live Experience</span>
-          </div>
-          <h1 className="text-7xl font-black italic tracking-tighter uppercase leading-none">ZABUS AFRICA</h1>
-        </div>
-      </div>
+    <div className="p-3 sm:p-6 space-y-6 sm:space-y-10 pb-24 sm:pb-32 bg-black min-h-screen text-white font-sans overflow-x-hidden">
+      {/* HERO CAROUSEL */}
+      <HeroCarousel />
 
       {/* RECOMMENDED FOR YOU */}
       {hasRecommendations && (
         <section>
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="bg-orange-500/20 p-2 rounded-lg">
-              <Sparkles className="text-orange-500" size={20} />
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8 px-1 sm:px-2">
+            <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-lg">
+              <Sparkles className="text-orange-500 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-black italic uppercase tracking-tighter">Recommended For You</h2>
-              <p className="text-zinc-500 text-[10px] uppercase tracking-widest mt-0.5">Based on your taste</p>
+              <h2 className="text-lg sm:text-2xl font-black italic uppercase tracking-tighter">Recommended For You</h2>
+              <p className="text-zinc-500 text-[9px] sm:text-[10px] uppercase tracking-widest mt-0.5">Based on your taste</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 px-1 sm:px-2">
             {recommendedSongs.map((song) => (
               <SongCard
                 key={song.id}
@@ -267,18 +426,18 @@ export default function HomePage() {
 
       {/* GENRE SCROLLER */}
       <section>
-        <div className="flex items-center gap-3 mb-6 px-2">
-          <div className="bg-orange-500/10 p-2 rounded-xl border border-orange-500/20">
-            <Music2 size={20} className="text-orange-500" />
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6 px-1 sm:px-2">
+          <div className="bg-orange-500/10 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-orange-500/20">
+            <Music2 className="text-orange-500 w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <h2 className="text-2xl font-black italic uppercase tracking-tighter">Explore Categories</h2>
+          <h2 className="text-lg sm:text-2xl font-black italic uppercase tracking-tighter">Explore Categories</h2>
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 px-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 sm:pb-6 px-1 sm:px-2">
           {GENRES.map((genre) => (
             <button
               key={genre}
               onClick={() => setActiveGenre(genre)}
-              className={`px-6 py-2.5 rounded-full text-[13px] font-bold transition-all whitespace-nowrap border
+              className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs sm:text-[13px] font-bold transition-all whitespace-nowrap border
                 ${activeGenre === genre
                   ? "bg-white text-black border-white shadow-lg shadow-white/10 scale-105"
                   : "bg-[#121212] text-zinc-400 hover:bg-[#181818] border-white/5 hover:border-white/20"
@@ -293,18 +452,18 @@ export default function HomePage() {
       {/* TRENDING */}
       {activeGenre === "All" && (
         <section>
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="bg-orange-500/20 p-2 rounded-lg">
-              <Flame className="text-orange-500" size={20} />
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8 px-1 sm:px-2">
+            <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-lg">
+              <Flame className="text-orange-500 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter">Match Day Trending</h2>
+            <h2 className="text-lg sm:text-2xl font-black italic uppercase tracking-tighter">Match Day Trending</h2>
           </div>
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 px-2">
-              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-square bg-zinc-900 animate-pulse rounded-[2.5rem]" />)}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 px-1 sm:px-2">
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-video sm:aspect-square bg-zinc-900 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 px-1 sm:px-2">
               {trendingSongs.map((song) => (
                 <SongCard
                   key={song.id}
@@ -320,20 +479,20 @@ export default function HomePage() {
 
       {/* ALL / GENRE FILTERED */}
       <section>
-        <div className="flex items-center gap-3 mb-8 px-2">
-          <div className="bg-orange-500/20 p-2 rounded-lg">
-            <Music2 className="text-orange-500" size={20} />
+        <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8 px-1 sm:px-2">
+          <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-lg">
+            <Music2 className="text-orange-500 w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <h2 className="text-2xl font-black italic uppercase tracking-tighter">
+          <h2 className="text-lg sm:text-2xl font-black italic uppercase tracking-tighter">
             {activeGenre === "All" ? "All Tracks" : `${activeGenre} Anthems`}
           </h2>
         </div>
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 px-2">
-            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-square bg-zinc-900 animate-pulse rounded-[2.5rem]" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 px-1 sm:px-2">
+            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-video sm:aspect-square bg-zinc-900 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />)}
           </div>
         ) : filteredSongs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 px-2">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 px-1 sm:px-2">
             {filteredSongs.map((song) => (
               <SongCard
                 key={song.id}
@@ -344,31 +503,31 @@ export default function HomePage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-32 text-center bg-zinc-900/10 rounded-[3rem] border border-dashed border-white/5 mx-2">
-            <AlertCircle size={48} className="text-zinc-800 mb-4" />
-            <p className="text-zinc-600 font-black italic uppercase tracking-widest text-sm">No {activeGenre} tracks available</p>
+          <div className="flex flex-col items-center justify-center py-16 sm:py-32 text-center bg-zinc-900/10 rounded-2xl sm:rounded-[3rem] border border-dashed border-white/5 mx-1 sm:mx-2">
+            <AlertCircle className="text-zinc-800 mb-3 sm:mb-4 w-8 h-8 sm:w-12 sm:h-12" />
+            <p className="text-zinc-600 font-black italic uppercase tracking-widest text-xs sm:text-sm">No {activeGenre} tracks available</p>
           </div>
         )}
       </section>
 
       {/* PLAYLIST MODAL */}
       {showPlaylistModal && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-4">
-          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-md rounded-[3.5rem] p-12 shadow-2xl">
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="text-3xl font-black italic uppercase text-orange-500 tracking-tighter">
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[99999] flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-md rounded-3xl sm:rounded-[3.5rem] p-6 sm:p-12 shadow-2xl">
+            <div className="flex justify-between items-center mb-6 sm:mb-10">
+              <h2 className="text-xl sm:text-3xl font-black italic uppercase text-orange-500 tracking-tighter">
                 {isUserSignedIn ? "Add to Library" : "Access Denied"}
               </h2>
               <button onClick={() => setShowPlaylistModal(false)} className="text-zinc-500 hover:text-white transition-all">
-                <X size={32} />
+                <X size={24} className="sm:w-[32px] sm:h-[32px]" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {!isUserSignedIn ? (
-                <div className="text-center py-10">
-                  <Lock className="text-orange-500 mx-auto mb-6" size={48} />
-                  <p className="font-bold text-zinc-400 mb-8 px-6 text-sm uppercase tracking-widest leading-relaxed">Login to curate your personal stadium collection</p>
-                  <Link href="/login" className="block w-full bg-white text-black font-black text-xs uppercase tracking-[0.2em] py-5 rounded-2xl hover:bg-orange-500 transition-all">
+                <div className="text-center py-6 sm:py-10">
+                  <Lock className="text-orange-500 mx-auto mb-4 sm:mb-6 w-8 h-8 sm:w-12 sm:h-12" />
+                  <p className="font-bold text-zinc-400 mb-6 sm:mb-8 px-2 sm:px-6 text-xs sm:text-sm uppercase tracking-widest leading-relaxed">Login to curate your personal stadium collection</p>
+                  <Link href="/login" className="block w-full bg-white text-black font-black text-xs uppercase tracking-[0.2em] py-3.5 sm:py-5 rounded-xl sm:rounded-2xl hover:bg-orange-500 transition-all">
                     Sign In Now
                   </Link>
                 </div>
@@ -381,23 +540,23 @@ export default function HomePage() {
                       key={playlist.id}
                       onClick={() => addToPlaylist(playlist.id)}
                       disabled={addedStatus !== null}
-                      className={`w-full flex items-center justify-between p-6 rounded-[2rem] transition-all duration-500 border ${
+                      className={`w-full flex items-center justify-between p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] transition-all duration-500 border ${
                         isSuccess ? "bg-green-600 border-green-400" :
                         isExists ? "bg-orange-600/20 border-orange-500" :
                         "bg-zinc-900 border-transparent hover:border-orange-500/40 hover:bg-zinc-800"
                       }`}
                     >
-                      <span className="font-black uppercase text-xs tracking-widest">
+                      <span className="font-black uppercase text-[10px] sm:text-xs tracking-widest">
                         {isSuccess ? "Saved!" : isExists ? "In Collection" : playlist.title}
                       </span>
-                      {isSuccess ? <Check size={20} /> : <PlusCircle size={20} className="text-zinc-700" />}
+                      {isSuccess ? <Check size={18} /> : <PlusCircle size={18} className="text-zinc-700" />}
                     </button>
                   );
                 })
               ) : (
-                <div className="text-center py-10 bg-zinc-900/50 rounded-3xl border border-dashed border-white/10">
-                  <p className="font-black uppercase tracking-widest text-[10px] text-zinc-500 mb-6">No playlists found</p>
-                  <Link href="/playlists" className="bg-orange-500 text-black font-black text-[10px] px-10 py-4 rounded-full uppercase">Create New</Link>
+                <div className="text-center py-8 sm:py-10 bg-zinc-900/50 rounded-2xl sm:rounded-3xl border border-dashed border-white/10">
+                  <p className="font-black uppercase tracking-widest text-[9px] sm:text-[10px] text-zinc-500 mb-4 sm:mb-6">No playlists found</p>
+                  <Link href="/playlists" className="bg-orange-500 text-black font-black text-[9px] sm:text-[10px] px-6 sm:px-10 py-3 sm:py-4 rounded-full uppercase">Create New</Link>
                 </div>
               )}
             </div>

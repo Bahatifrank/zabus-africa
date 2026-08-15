@@ -7,7 +7,6 @@ import {
   Home, TrendingUp, Users, Music, Bookmark, Mail, 
   Tv, Upload, Settings, Loader2, LogIn,
   Image as ImageIcon, ChevronDown, X, LayoutDashboard, Menu
-  Image as ImageIcon, ChevronDown, X, LayoutDashboard, Menu
 } from "lucide-react";
 
 const GENRES = [
@@ -19,7 +18,6 @@ export default function Sidebar() {
   const pathname = usePathname();
   const supabase = createClient();
 
-  const [isOpen, setIsOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -117,8 +115,6 @@ export default function Sidebar() {
 
   const closeMobile = () => setIsOpen(false);
 
-  const closeMobile = () => setIsOpen(false);
-
   return (
     <>
       {/* Mobile Header Bar */}
@@ -177,7 +173,6 @@ export default function Sidebar() {
                   key={item.name}
                   href={item.href}
                   onClick={closeMobile}
-                  onClick={closeMobile}
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase transition-all ${
                     isActive
                       ? "bg-zinc-900 text-white border border-white/5"
@@ -193,7 +188,6 @@ export default function Sidebar() {
             <Link
               href="/live-football"
               onClick={closeMobile}
-              onClick={closeMobile}
               className="flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase transition-all bg-red-950/20 text-zinc-300 border border-red-500/10 hover:border-red-500/30 group"
             >
               <div className="flex items-center gap-4">
@@ -208,8 +202,7 @@ export default function Sidebar() {
             {!loadingUser && !user && (
               <Link
                 href="/login"
-                onClick={closeMobile}
-                onClick={closeMobile}
+                onClick={closeMobile}                
                 className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase transition-all ${
                   pathname === "/login" ? "bg-zinc-900 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
                 }`}
@@ -230,7 +223,6 @@ export default function Sidebar() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => { closeMobile(); setUploadStatus(""); setIsUploadOpen(true); }}
-                onClick={() => { closeMobile(); setUploadStatus(""); setIsUploadOpen(true); }}
                 className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wider py-4 rounded-xl transition-all shadow-[0_4px_20px_rgba(249,115,22,0.15)]"
               >
                 <Upload size={16} />
@@ -239,7 +231,6 @@ export default function Sidebar() {
 
               <Link
                 href="/settings"
-                onClick={closeMobile}
                 onClick={closeMobile}
                 className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
                   pathname.startsWith("/settings") ? "bg-zinc-900 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
@@ -254,7 +245,6 @@ export default function Sidebar() {
                 <Link
                   href="/admin/dashboard"
                   onClick={closeMobile}
-                  onClick={closeMobile}
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
                     pathname.startsWith("/admin/dashboard") ? "bg-zinc-900 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
                   }`}
@@ -266,7 +256,6 @@ export default function Sidebar() {
 
               {user && (
                 <button
-                  onClick={() => { closeMobile(); supabase.auth.signOut(); }}
                   onClick={() => { closeMobile(); supabase.auth.signOut(); }}
                   className="text-left text-zinc-600 hover:text-red-400 text-[10px] font-bold tracking-widest uppercase mt-2 px-4 transition-colors"
                 >
