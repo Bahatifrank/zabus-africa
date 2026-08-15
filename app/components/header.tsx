@@ -118,7 +118,7 @@ export default function Header() {
                   ))
                 ) : !isLoading && (
                   <div className="p-10 text-center">
-                    <p className="text-zinc-500 text-sm italic font-medium">No Page found! "{query}"</p>
+                    <p className="text-zinc-500 text-sm italic font-medium">no title found! "{query}"</p>
                   </div>
                 )}
               </div>
